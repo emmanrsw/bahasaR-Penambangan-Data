@@ -1,0 +1,269 @@
+---
+Nama Kelompok 6 :
+1. Ingrid Felita A S - 225314004
+2. Raymundus Herlambang C D A - 225314010
+3. Emmanuela Narisa W - 225314065
+4. Margareta Novianti A - 225314070
+5. Yohanes Feri Andung K - 225314186
+---
+
+## MEMBACA DATA
+```{r}
+library(readxl) #muat paket
+getwd()
+setwd("D:/kuliah/SEM 5/PenData/TUGAS4B")
+data <- read_excel("FRESH_MART_PREPO.xlsx", sheet = 1)
+```
+
+## Menampilkan ringkasan statistik mengenai data tersebut
+```{r}
+summary(data)
+```
+
+## Menghitung jumlah nilai NA pada setiap kolom dataset 
+
+Pada dataset ini tidak ditemukan adanya NA karena dataset telah dipreprocessing terlebih dahulu
+```{r}
+# Mengecek Missing Value
+sapply(data, function(x) sum(is.na(x)))
+```
+
+## Mengubah tipe data sesuai dengan jenis atributnya dan menampilkan struktur setelah diubah
+```{r}
+data$`Submission Date` <- as.character(data$`Submission Date`)
+data$`Tanggal Pengiriman` <- as.character(data$`Tanggal Pengiriman`)
+data$`Metode Pembayaran` <- as.factor (data$`Metode Pembayaran`)
+data$Nama_Item <- as.factor (data$Nama_Item)
+data$Amount <- as.integer(data$Amount)
+data$Quantity <- as.integer(data$Quantity)
+
+str(data)
+```
+
+
+## ANALISIS DESKRIPTIF 
+
+```{r}
+library(pracma)
+```
+
+## Mencari nilai modus dari item yang dibeli
+
+Hasil modus tersebut menampilkan bahwa dalam dataset tersebut, pembeli lebih banyak membeli item dari bayam
+```{r}
+Mode(data$Nama_Item)
+```
+
+## Mencari nilai modus dari metode pembayaran 
+
+Hasil dari modus tersebut menampilkan bahwa pembeli lebih banyak menggunakan metode COD daripada transfer.
+```{r}
+Mode(data$`Metode Pembayaran`)
+```
+
+## Mencari nilai rata-rata dari total harga
+```{r}
+mean(data$Amount)
+```
+
+## Mencari nilai rata-rata dari kuantitas pembelian dari setiap item yang dibeli
+
+Rata-rata membeli 1 dari setiap item tersebut 
+```{r}
+mean(data$Quantity)
+```
+## Mencari nilai tengah dari total harga 
+```{r}
+median(data$Amount)
+```
+## Mencari nilai tengah dari kuantitas 
+```{r}
+median(data$Quantity)
+```
+## Melihar range dari kolom amount dan quantity
+```{r}
+# range
+max(data$Amount) - min(data$Amount)
+max(data$Quantity) - min(data$Quantity)
+```
+
+```{r}
+# variansi
+var(data$Amount)
+var(data$Quantity)
+```
+
+```{r}
+# standart deviasi
+sd(data$Amount)
+sd(data$Quantity)
+```
+## Menampilkan ringkasan statistik mengenai data tersebut
+```{r}
+summary(data)
+```
+
+## Menampilkan sebaran data dari Nama_Item 
+```{r}
+plot(data$Nama_Item)
+```
+
+## Menampilkan sebaran data dari Metode Pembayaran
+
+Tampak pembeli lebih berminat melakukan transaksi dengan cara COD.
+```{r}
+plot(data$`Metode Pembayaran`)
+```
+
+## Menampilkan sebaran data dari Amount menggunakan histogram dan boxplot 
+```{r}
+hist(data$Amount)
+boxplot(data$Amount)
+```
+
+## Menampilkan sebaran data dari Quantity menggunakan histogram dan boxplot 
+```{r}
+hist(data$Quantity)
+boxplot(data$Quantity)
+```
+
+## Membuat relasi dari kolom amount dan kolom quantity dalam kolom total belanja
+```{r}
+data$Total_Belanja <- data$Amount * data$Quantity
+```
+
+```{r}
+head(data)
+```
+
+# Mengelompokkan data berdasarkan Nama dan Tanggal Pengiriman
+
+Menghitung total belanja per pelanggan per tanggal pengiriman
+
+```{r}
+total_per_pelanggan <- data %>%
+  group_by(Nama, `Tanggal Pengiriman`, `Metode Pembayaran`, Quantity) %>%
+  summarise(Total_Belanja_Harian = sum(Amount), .groups = "drop")
+```
+
+```{r}
+# Menampilkan hasil total belanja per pelanggan
+print(total_per_pelanggan)
+```
+```{r}
+str(total_per_pelanggan)
+```
+```{r}
+# Apakah ada hubungan antara jumlah barang yang dibeli (`Quantity`) dan total belanja per pelanggan (`Total_Belanja`)?
+cor.test(total_per_pelanggan$Quantity, total_per_pelanggan$Total_Belanja_Harian)
+plot(total_per_pelanggan$Quantity, total_per_pelanggan$Total_Belanja_Harian)
+```
+
+```{r}
+# metode pembayaran (A) vs total belanja harian (B)
+t_test_result <- t.test(Total_Belanja_Harian ~ `Metode Pembayaran`, data = total_per_pelanggan)
+
+# Melihat hasil t-test
+print(t_test_result)
+```
+
+```{r}
+# Menghitung total jumlah pembelian per tanggal pengiriman
+total_quantity_per_date <- data %>%
+  group_by(`Tanggal Pengiriman`) %>%
+  summarise(Total_Quantity = sum(Quantity))
+```
+
+```{r}
+print(total_quantity_per_date)
+```
+
+```{r}
+# Mengonversi tanggal menjadi format yang sesuai
+total_quantity_per_date$`Tanggal Pengiriman` <- as.Date(total_quantity_per_date$`Tanggal Pengiriman`)
+
+# Melakukan regresi linear
+model <- lm(Total_Quantity ~ `Tanggal Pengiriman`, data = total_quantity_per_date)
+summary(model)
+```
+```{r}
+# 1. Relasi antara data numerik
+# Korelasi antara Amount dan Quantity
+cor.test(data$Amount, data$Quantity)
+# Scatter plot
+plot(data$Amount, data$Quantity)
+
+```
+
+```{r}
+# Tabel kontingensi
+contingency_table <- with(dataF, table(`Metode Pembayaran`, Nama_Item))
+print(contingency_table)
+
+# Uji Chi-Square
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+```
+
+
+```{r}
+# Membuat histogram untuk distribusi total belanja
+hist(data$Amount,
+     breaks = 20,
+     col = "skyblue",
+     main = "Distribusi Total Belanja",
+     xlab = "Total Belanja (Amount)")
+```
+
+
+```{r}
+# Membuat histogram untuk distribusi Quantity
+hist(data$Quantity,
+     breaks = 10,
+     col = "skyblue",  # Color of the bars
+     main = "Distribusi Quantity",  # Title of the histogram
+     xlab = "Quantity")  # Label for the x-axis
+```
+
+
+```{r}
+# Membuat boxplot untuk distribusi total belanja
+boxplot(data$Amount,
+        main = "Boxplot Distribusi Total Belanja",
+        ylab = "Total Belanja (Amount)",
+        col = "lightgreen")
+
+```
+
+```{r}
+# Boxplot
+boxplot(data$Quantity,
+        main = "Boxplot Distribusi Quantity",
+        ylab = "Quantity",
+        col = "lightgreen")
+```
+
+```{r}
+# Menghitung total Quantity per Nama_Item
+top_items <- data %>%
+  group_by(Nama_Item) %>%
+  summarise(Total_Quantity = sum(Quantity)) %>%
+  arrange(desc(Total_Quantity))
+
+# Memisahkan 5 item teratas dan yang lainnya dijadikan sebagai "Others"
+top_5_items <- top_items[1:5, ]
+others <- top_items[6:nrow(top_items), ] %>%
+  summarise(Nama_Item = "Others", Total_Quantity = sum(Total_Quantity))
+
+# Menggabungkan kembali data top 5 dan "Others"
+final_data <- bind_rows(top_5_items, others)
+
+# Membuat pie chart
+ggplot(final_data, aes(x = "", y = Total_Quantity, fill = Nama_Item)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Top 5 Items by Quantity and Others") +
+  theme_void() +
+  theme(legend.title = element_blank())
+
+```
