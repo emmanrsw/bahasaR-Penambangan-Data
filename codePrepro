@@ -1,39 +1,77 @@
-install.packages("readxl")
-install.packages("dplyr")
-install.packages("tidyverse")
 
+```
+Nama Kelompok 6 :
+1. Ingrid Felita A S - 225314004
+2. Raymundus Herlambang C D A - 225314010
+3. Emmanuela Narisa W - 225314065
+4. Margareta Novianti A - 225314070
+5. Yohanes Feri Andung K - 225314186
+```
 
-# Muat paket
-library(readxl)
+```{r}
+# install.packages("readxl")
+# install.packages("dplyr")
+# install.packages("tidyverse")
+# install.packages("tidyr")
+# install.packages("stringr")
+# install.packages("purrr")
+```
+
+```{r}
+library(purrr)  # Tambahkan purrr untuk fungsi map_chr dan map_dbl
+library(tidyr)
+library(stringr)
+library(readxl) #muat paket
 library(dplyr)
+library(lubridate)
+```
+
+```{r}
 getwd()
-setwd("D:/kuliah/SEM 5/PenData")
+setwd("D:/kuliah/SEM 5/PenData/PREPOCESSING_KELOMPOK6/PREPOCESSING_KELOMPOK6")
 data <- read_excel("Fresh_Mart.xlsx", sheet = 1)
+```
 
-
+```{r}
 # Menampilkan 6 baris pertama (default)
 head(data)
+```
+
+```{r}
 # Menampilkan 10 baris pertama
 head(data, 10)
+```
+
+```{r}
 # Membuka data dalam tampilan spreadsheet (hanya di RStudio)
 View(data)
+```
+
+```{r}
 str(data)
+```
+
+```{r}
 summary(data)
+```
 
-
-#code lanjut 2
-library(lubridate)
-
+```{r}
 # Konversi kolom 'Submission Date' dari format "Sep 8, 2024"
 data$`Submission Date` <- as.Date(data$`Submission Date`, format = "%b %d, %Y")
-
 # Periksa hasilnya
 str(data)
-head(data)
+```
 
+```{r}
+# Mengecek Missing Value
+sapply(data, function(x) sum(is.na(x)))
+```
+```{r}
 # Mencetak kolom 'Tanggal Pengiriman'
 print(data$`Tanggal Pengiriman`)
+```
 
+```{r}
 # Ganti bulan dalam bahasa Indonesia menjadi bahasa Inggris
 data$`Tanggal Pengiriman` <- gsub("Des", "Dec", data$`Tanggal Pengiriman`)
 data$`Tanggal Pengiriman` <- gsub("Mei", "May", data$`Tanggal Pengiriman`)
@@ -45,34 +83,44 @@ data$`Tanggal Pengiriman` <- gsub("Jan", "Jan", data$`Tanggal Pengiriman`)
 data$`Tanggal Pengiriman` <- gsub("Apr", "Apr", data$`Tanggal Pengiriman`)
 data$`Tanggal Pengiriman` <- gsub("Jul", "Jul", data$`Tanggal Pengiriman`)
 data$`Tanggal Pengiriman` <- gsub("Sep", "Sep", data$`Tanggal Pengiriman`)
+```
 
+```{r}
 # Konversi kolom menjadi tipe Date
 data$`Tanggal Pengiriman` <- as.Date(data$`Tanggal Pengiriman`, format = "%b %d, %Y")
-
 # Periksa hasilnya
 str(data$`Tanggal Pengiriman`)
+```
+
+```{r}
 head(data$`Tanggal Pengiriman`)
+```
 
-
+```{r}
 # Hapus semua karakter yang bukan angka atau tanda plus
 data$`Nomor Telepon` <- gsub("[^0-9+]", "", data$`Nomor Telepon`)
-
 # Lihat beberapa baris setelah pembersihan
 head(data$`Nomor Telepon`)
+```
 
+```{r}
 # Cek format nomor telepon, misalnya dengan memastikan panjangnya sesuai
 # Misalkan nomor telepon yang valid memiliki panjang 10-15 karakter
-
 valid_length <- nchar(data$`Nomor Telepon`) >= 10 & nchar(data$`Nomor Telepon`) <= 15
 data$`Nomor Telepon`[!valid_length] <- NA
-
 # Periksa hasil
 head(data$`Nomor Telepon`)
+```
 
-view(data)
+```{r}
+print(data)
+```
 
-# PREPO LANJUTAN UTK PRODUK YANG DIBELI
-# Memisahkan setiap item produk menjadi baris terpisah
+```{r}
+# ----------------PERSIAPAN OUTLIERS-------------------------
+```
+
+```{r}
 data_long <- data %>%
   # Mengganti line breaks dengan spasi
   mutate(Produk = str_replace_all(Produk, "\\r\\n", " ")) %>%
@@ -81,80 +129,184 @@ data_long <- data %>%
   # Menghapus baris yang berisi total belanja
   filter(!str_detect(Produk, "^Total:"))
 
-# Fungsi untuk mengekstrak Nama Item
-extract_name <- function(produk) {
-  str_extract(produk, "^[^(]+") %>% 
-    str_trim()  # Menghapus spasi di awal dan akhir
-}
+(data_long)
 
+```
+
+```{r}
+data_ayam_negeri <- data_long %>%
+  filter(str_detect(Produk, "Ayam Negeri"))
+
+print(data_ayam_negeri)
+print(data_long)
+```
+
+```{r}
+print(data_long)
+```
+
+
+```{r}
+data_long <- data_long %>%
+  mutate(Produk = str_replace(Produk, "^Ayam Negeri\\s*\\((.*)\\)$", "Ayam Negeri = \\1"))
+
+# Memfilter data yang hanya berisi 'Ayam Negeri'
+data_ayam_negeri <- data_long %>%
+  filter(str_detect(Produk, "^Ayam Negeri ="))
+
+# Menampilkan data yang telah dimodifikasi
+print(data_ayam_negeri)
+```
+
+```{r}
+View(data_long)
+```
+
+```{r}
+# Menggabungkan nama produk dengan produk yang ada satu di bawahnya
+data_long <- data_long %>%
+  mutate(Produk = ifelse(
+    str_detect(Produk, "^Ayam Negeri ="),
+    paste(Produk, lead(Produk, default = "")),
+    Produk
+  ))
+
+print(data_long)
+```
+
+
+```{r}
+# Menghapus baris yang memiliki nama produk berawalan '(Amount'
+data_long <- data_long %>%
+  filter(!str_detect(Produk, "^\\(Amount"))
+
+# Menampilkan data yang telah diubah
+print(data_long)
+```
+
+```{r}
 # Fungsi untuk mengekstrak Amount
 extract_amount <- function(produk) {
-  amount_str <- str_extract(produk, "(?<=Amount: )[0-9,.]+")
-  if (is.na(amount_str)) return(NA)
-  as.numeric(gsub(",", "", amount_str))
+  amount_str <- str_extract(produk, "(?<=Amount: )[0-9,.]+") # Menangkap nilai setelah "Amount: "
+  if (is.na(amount_str)) return(NA) # Jika tidak ditemukan, kembalikan NA
+  as.numeric(gsub(",", "", amount_str)) # Menghapus koma dan mengonversi ke numerik
 }
+```
 
-# Fungsi untuk mengekstrak Kuantitas
+```{r}
+# Fungsi untuk mengekstrak Quantity
 extract_quantity <- function(produk) {
-  quantity_str <- str_extract(produk, "(?<=Kuantitas: )[0-9]+")
-  if (is.na(quantity_str)) return(NA)
-  as.numeric(quantity_str)
+  quantity_str <- str_extract(produk, "(?<=Quantity: )[0-9]+") # Menangkap nilai setelah "Quantity: "
+  if (is.na(quantity_str)) return(NA) # Jika tidak ditemukan, kembalikan NA
+  as.numeric(quantity_str) # Mengonversi ke numerik
 }
+```
 
-# Mengaplikasikan fungsi untuk mengekstrak Nama Item, Amount, dan Kuantitas
+```{r}
+# Menerapkan fungsi untuk mengekstrak Amount dan Quantity ke dalam kolom baru
 data_long <- data_long %>%
-  mutate(Nama_Item = sapply(Produk, extract_name),
-         Amount = sapply(Produk, extract_amount),
-         Quantity = sapply(Produk, extract_quantity))
+  mutate(
+    Amount = map_dbl(Produk, extract_amount),
+    Quantity = map_dbl(Produk, extract_quantity)
+  )
 
-# Menampilkan hasil untuk memeriksa
-print(data_long %>% select(Nama, Nama_Item, Amount, Quantity) %>% head(10))
+# Menampilkan semua kolom yang ada termasuk yang diekstrak
+print(data_long)
+```
 
-view(data_long)
+```{r}
+library(dplyr)
 
-#PREPO OUTLIERS
-
-# Menghitung Z-Score
+# Mengganti nama kolom "Produk" menjadi "Nama_Item"
 data_long <- data_long %>%
-  mutate(Amount_ZScore = (Amount - mean(Amount, na.rm = TRUE)) / sd(Amount, na.rm = TRUE),
-         Quantity_ZScore = (Quantity - mean(Quantity, na.rm = TRUE)) / sd(Quantity, na.rm = TRUE))
+  rename(Nama_Item = Produk)
 
-# Menentukan threshold untuk z-score, biasanya lebih dari 3 dianggap sebagai outlier
-outliers_amount_z <- data_long %>% filter(abs(Amount_ZScore) > 3)
-outliers_quantity_z <- data_long %>% filter(abs(Quantity_ZScore) > 3)
+# Menghapus teks di dalam kurung di kolom Nama_Item
+data_long <- data_long %>%
+  mutate(Nama_Item = gsub("\\s*\\([^)]*\\)", "", Nama_Item))
 
+
+# Menampilkan data dengan nama kolom yang telah diubah
+print(data_long)
+```
+
+
+
+OUTLIER
+
+```{r}
+threshold <- 3
+
+# Menentukan outliers tanpa menambah kolom baru
+outliers_amount_z <- data_long %>%
+  filter(abs((Amount - mean(Amount, na.rm = TRUE)) / sd(Amount, na.rm = TRUE)) > threshold)
+
+outliers_quantity_z <- data_long %>%
+  filter(abs((Quantity - mean(Quantity, na.rm = TRUE)) / sd(Quantity, na.rm = TRUE)) > threshold)
+
+# Menampilkan hasil
 print(outliers_amount_z)
 print(outliers_quantity_z)
 
-# Menghitung IQR dan menentukan batas outlier
-iqr_amount <- IQR(data_long$Amount, na.rm = TRUE)
-q1_amount <- quantile(data_long$Amount, 0.25, na.rm = TRUE)
-q3_amount <- quantile(data_long$Amount, 0.75, na.rm = TRUE)
+```
 
-outliers_amount_iqr <- data_long %>% filter(Amount < (q1_amount - 1.5 * iqr_amount) | Amount > (q3_amount + 1.5 * iqr_amount))
-
-iqr_quantity <- IQR(data_long$Quantity, na.rm = TRUE)
-q1_quantity <- quantile(data_long$Quantity, 0.25, na.rm = TRUE)
-q3_quantity <- quantile(data_long$Quantity, 0.75, na.rm = TRUE)
-
-outliers_quantity_iqr <- data_long %>% filter(Quantity < (q1_quantity - 1.5 * iqr_quantity) | Quantity > (q3_quantity + 1.5 * iqr_quantity))
-
-print(outliers_amount_iqr)
-print(outliers_quantity_iqr)
-
+```{r}
 library(ggplot2)
+```
 
-# Boxplot untuk Amount
-ggplot(data_long, aes(x = "", y = Amount)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Amount", y = "Amount")
 
-# Boxplot untuk Quantity
+```{r}
+# Visualisasi outliers untuk Quantity
 ggplot(data_long, aes(x = "", y = Quantity)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Quantity", y = "Quantity")
+  geom_boxplot(outlier.colour = "blue", outlier.shape = 16, outlier.size = 2) +
+  labs(title = "Boxplot Quantity dengan Outliers", y = "Quantity") +
+  theme_minimal()
 
-# Scatter plot antara Amount dan Quantity
-ggplot(data_long, aes(x = Amount, y = Quantity)) +
-  geom_point() +
-  labs(title = "Scatter Plot of Amount vs Quantity", x = "Amount", y = "Quantity")
+```
+
+```{r}
+# Menggunakan threshold Z-score untuk menghapus outliers
+threshold <- 3
+
+# Menghapus outliers pada kolom Amount dan Quantity
+data_clean <- data_long %>%
+  filter(abs((Amount - mean(Amount, na.rm = TRUE)) / sd(Amount, na.rm = TRUE)) <= threshold,
+         abs((Quantity - mean(Quantity, na.rm = TRUE)) / sd(Quantity, na.rm = TRUE)) <= threshold)
+
+# Menampilkan data yang sudah dibersihkan dari outliers
+print(data_clean)
+```
+
+```{r}
+data_long <- data_clean
+print(data_long)
+```
+
+```{r}
+# Visualisasi outliers untuk Quantity
+ggplot(data_long, aes(x = "", y = Quantity)) +
+  geom_boxplot(outlier.colour = "blue", outlier.shape = 16, outlier.size = 2) +
+  labs(title = "Boxplot Quantity setelah penghapusan Outliers", y = "Quantity") +
+  theme_minimal()
+```
+
+
+```{r}
+# Membuat Histogram untuk Amount
+ggplot(data_long, aes(x = Amount)) +
+  geom_histogram(binwidth = 1000, fill = "lightblue", color = "black") +
+  labs(title = "Distribusi Amount Setelah Outliers Dihapus", x = "Amount", y = "Count") +
+  theme_minimal()
+```
+
+```{r}
+print(data_long)
+```
+
+```{r}
+library(writexl)
+```
+
+```{r}
+write_xlsx(data_long, "D:/kuliah/SEM 5/PenData/PREPOCESSING_KELOMPOK6/FRESH_MART_PREPO.xlsx")
+```
